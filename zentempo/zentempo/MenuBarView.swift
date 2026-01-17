@@ -85,7 +85,15 @@ struct MenuBarView: View {
                         .font(.subheadline)
                     Spacer()
                 }
-                
+
+                HStack {
+                    Image(systemName: "calendar")
+                        .foregroundColor(.blue)
+                    Text("This week: \(timer.sessionsCompletedThisWeek) sessions")
+                        .font(.subheadline)
+                    Spacer()
+                }
+
                 HStack {
                     Image(systemName: "flame.fill")
                         .foregroundColor(.orange)

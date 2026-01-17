@@ -71,6 +71,7 @@ class PomodoroTimer: ObservableObject {
     @Published var isPaused: Bool = false
     @Published var sessionsCompleted: Int = 0
     @Published var sessionsCompletedToday: Int = 0
+    @Published var sessionsCompletedThisWeek: Int = 0
     @AppStorage("lifetimePomodoroCount") var lifetimePomodoroCount: Int = 0
     @AppStorage("notificationSound") var notificationSound: String = "default"
     @AppStorage("persistentNotifications") var persistentNotifications: Bool = true
@@ -88,6 +89,7 @@ class PomodoroTimer: ObservableObject {
     
     init() {
         loadTodaysSessions()
+        loadWeekSessions()
         loadQuotes()
     }
     
@@ -253,14 +255,39 @@ class PomodoroTimer: ObservableObject {
         }
     }
     
-    private func loadTodaysSessions() {
-        let dateKey = DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .none)
-        sessionsCompletedToday = UserDefaults.standard.integer(forKey: "sessions_\(dateKey)")
+    private func dateKey(for date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        return "sessions_\(formatter.string(from: date))"
     }
-    
+
+    private func startOfWeek(for date: Date) -> Date {
+        var calendar = Calendar.current
+        calendar.firstWeekday = 1 // Sunday
+        return calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: date))!
+    }
+
+    private func loadTodaysSessions() {
+        sessionsCompletedToday = UserDefaults.standard.integer(forKey: dateKey(for: Date()))
+    }
+
     private func saveTodaysSessions() {
-        let dateKey = DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .none)
-        UserDefaults.standard.set(sessionsCompletedToday, forKey: "sessions_\(dateKey)")
+        UserDefaults.standard.set(sessionsCompletedToday, forKey: dateKey(for: Date()))
+        loadWeekSessions()
+    }
+
+    private func loadWeekSessions() {
+        var calendar = Calendar.current
+        calendar.firstWeekday = 1 // Sunday
+        let weekStart = startOfWeek(for: Date())
+
+        var total = 0
+        for dayOffset in 0..<7 {
+            if let day = calendar.date(byAdding: .day, value: dayOffset, to: weekStart) {
+                total += UserDefaults.standard.integer(forKey: dateKey(for: day))
+            }
+        }
+        sessionsCompletedThisWeek = total
     }
     
     func formattedTime() -> String {
