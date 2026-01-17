@@ -109,12 +109,29 @@ struct SettingsView: View {
                         .buttonStyle(.link)
                         .foregroundColor(.red)
                     }
-                    
+
                     HStack {
                         Image(systemName: "info.circle.fill")
                             .foregroundColor(.blue)
                         Text("Version: \(appVersion)")
                         Spacer()
+                    }
+                }
+
+                Section("Data Export") {
+                    HStack {
+                        Image(systemName: "square.and.arrow.up")
+                            .foregroundColor(.green)
+                        Text("Export session history")
+                        Spacer()
+                        Button("JSON") {
+                            timer.saveExport(format: "json")
+                        }
+                        .buttonStyle(.bordered)
+                        Button("CSV") {
+                            timer.saveExport(format: "csv")
+                        }
+                        .buttonStyle(.bordered)
                     }
                 }
             }
@@ -135,7 +152,7 @@ struct SettingsView: View {
             }
         }
         .padding()
-        .frame(width: 400, height: 480)
+        .frame(width: 400, height: 540)
         .onAppear {
             checkLaunchAtLogin()
         }

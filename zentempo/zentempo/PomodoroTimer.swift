@@ -9,6 +9,8 @@ import SwiftUI
 import Combine
 import UserNotifications
 import AVFoundation
+import AppKit
+import UniformTypeIdentifiers
 
 enum TimerState {
     case idle
@@ -343,5 +345,88 @@ class PomodoroTimer: ObservableObject {
     
     static func getAvailableSounds() -> [SystemSound] {
         return SystemSound.allCases
+    }
+
+    // MARK: - Data Export
+
+    struct SessionData: Codable {
+        let date: String
+        let sessions: Int
+    }
+
+    struct ExportData: Codable {
+        let exportDate: String
+        let lifetimeSessions: Int
+        let dailySessions: [SessionData]
+    }
+
+    func getAllSessionData() -> [SessionData] {
+        let defaults = UserDefaults.standard
+        let allKeys = defaults.dictionaryRepresentation().keys
+
+        var sessions: [SessionData] = []
+        for key in allKeys where key.hasPrefix("sessions_") {
+            let dateString = String(key.dropFirst("sessions_".count))
+            let count = defaults.integer(forKey: key)
+            if count > 0 {
+                sessions.append(SessionData(date: dateString, sessions: count))
+            }
+        }
+
+        return sessions.sorted { $0.date < $1.date }
+    }
+
+    func exportToJSON() -> Data? {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss'Z'"
+        formatter.timeZone = TimeZone(identifier: "UTC")
+
+        let exportData = ExportData(
+            exportDate: formatter.string(from: Date()),
+            lifetimeSessions: lifetimePomodoroCount,
+            dailySessions: getAllSessionData()
+        )
+
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try? encoder.encode(exportData)
+    }
+
+    func exportToCSV() -> String {
+        var csv = "date,sessions\n"
+        for session in getAllSessionData() {
+            csv += "\(session.date),\(session.sessions)\n"
+        }
+        return csv
+    }
+
+    func saveExport(format: String) {
+        let panel = NSSavePanel()
+        panel.canCreateDirectories = true
+        panel.showsTagField = false
+
+        if format == "json" {
+            panel.nameFieldStringValue = "zentempo_sessions.json"
+            panel.allowedContentTypes = [.json]
+        } else {
+            panel.nameFieldStringValue = "zentempo_sessions.csv"
+            panel.allowedContentTypes = [.commaSeparatedText]
+        }
+
+        panel.begin { response in
+            guard response == .OK, let url = panel.url else { return }
+
+            do {
+                if format == "json" {
+                    if let data = self.exportToJSON() {
+                        try data.write(to: url)
+                    }
+                } else {
+                    try self.exportToCSV().write(to: url, atomically: true, encoding: .utf8)
+                }
+            } catch {
+                print("Export failed: \(error)")
+            }
+        }
     }
 }
