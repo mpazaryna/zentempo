@@ -11,6 +11,7 @@ import UserNotifications
 class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate {
     var menuBarManager: MenuBarManager?
     var timer = PomodoroTimer()
+    var telosManager = TelosManager()
     
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Set the notification delegate
@@ -29,7 +30,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
         setupNotificationCategories()
         
         // Set up menu bar
-        menuBarManager = MenuBarManager(timer: timer)
+        menuBarManager = MenuBarManager(timer: timer, telosManager: telosManager)
+
+        // Load telos agents
+        telosManager.refresh()
         
         // Update icon when timer changes
         Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in

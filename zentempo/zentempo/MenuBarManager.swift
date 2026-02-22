@@ -12,9 +12,11 @@ class MenuBarManager: NSObject {
     private var statusItem: NSStatusItem?
     private var popover: NSPopover?
     private var timer: PomodoroTimer
-    
-    init(timer: PomodoroTimer) {
+    private var telosManager: TelosManager
+
+    init(timer: PomodoroTimer, telosManager: TelosManager) {
         self.timer = timer
+        self.telosManager = telosManager
         super.init()
         setupMenuBar()
     }
@@ -69,10 +71,10 @@ class MenuBarManager: NSObject {
     @objc private func togglePopover() {
         if popover == nil {
             popover = NSPopover()
-            popover?.contentSize = NSSize(width: 300, height: 400)
+            popover?.contentSize = NSSize(width: 300, height: 450)
             popover?.behavior = .transient
             popover?.animates = true
-            popover?.contentViewController = NSHostingController(rootView: MenuBarView(timer: timer))
+            popover?.contentViewController = NSHostingController(rootView: MainPopoverView(timer: timer, telosManager: telosManager))
         }
         
         guard let button = statusItem?.button else { return }
@@ -89,10 +91,10 @@ class MenuBarManager: NSObject {
     func showPopover() {
         if popover == nil {
             popover = NSPopover()
-            popover?.contentSize = NSSize(width: 300, height: 400)
+            popover?.contentSize = NSSize(width: 300, height: 450)
             popover?.behavior = .transient
             popover?.animates = true
-            popover?.contentViewController = NSHostingController(rootView: MenuBarView(timer: timer))
+            popover?.contentViewController = NSHostingController(rootView: MainPopoverView(timer: timer, telosManager: telosManager))
         }
         
         guard let button = statusItem?.button else { return }
