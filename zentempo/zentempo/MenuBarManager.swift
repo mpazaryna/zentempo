@@ -33,39 +33,87 @@ class MenuBarManager: NSObject {
     
     func updateIcon() {
         guard let button = statusItem?.button else { return }
-        
-        let iconName: String
-        let tintColor: NSColor
-        
-        switch timer.currentState {
-        case .idle:
-            iconName = "timer"
-            tintColor = .labelColor
-        case .work:
-            iconName = "timer.circle.fill"
-            tintColor = .systemBlue
-        case .shortBreak:
-            iconName = "leaf.circle.fill"
-            tintColor = .systemGreen
-        case .longBreak:
-            iconName = "sparkles.rectangle.stack.fill"
-            tintColor = .systemPurple
-        }
-        
-        if let image = NSImage(systemSymbolName: iconName, accessibilityDescription: "ZenTempo") {
-            image.isTemplate = true
-            button.image = image
-            button.contentTintColor = tintColor
-        }
-        
-        // Show time remaining in menu bar
-        if timer.isRunning {
-            let minutes = timer.timeRemaining / 60
-            let seconds = timer.timeRemaining % 60
-            button.title = String(format: " %02d:%02d", minutes, seconds)
-        } else {
+
+        if timer.currentState == .idle {
+            // Idle: show default SF Symbol
+            if let image = NSImage(systemSymbolName: "timer", accessibilityDescription: "ZenTempo") {
+                image.isTemplate = true
+                button.image = image
+                button.contentTintColor = .labelColor
+            }
             button.title = ""
+            return
         }
+
+        // Active session: draw progress ring
+        let totalDuration: Int
+        switch timer.currentState {
+        case .work:
+            totalDuration = timer.workDuration
+        case .shortBreak:
+            totalDuration = timer.shortBreakDuration
+        case .longBreak:
+            totalDuration = timer.longBreakDuration
+        case .idle:
+            totalDuration = 1
+        }
+
+        let progress = totalDuration > 0 ? Double(timeRemaining) / Double(totalDuration) : 0
+        let color: NSColor
+        switch timer.currentState {
+        case .work:
+            color = .systemBlue
+        case .shortBreak:
+            color = .systemGreen
+        case .longBreak:
+            color = .systemPurple
+        case .idle:
+            color = .labelColor
+        }
+
+        let image = drawProgressRing(progress: progress, color: color, paused: timer.isPaused)
+        button.image = image
+        button.contentTintColor = nil
+        button.title = ""
+    }
+
+    private var timeRemaining: Int {
+        timer.timeRemaining
+    }
+
+    private func drawProgressRing(progress: Double, color: NSColor, paused: Bool) -> NSImage {
+        let size: CGFloat = 18
+        let lineWidth: CGFloat = 2.0
+        let image = NSImage(size: NSSize(width: size, height: size), flipped: false) { rect in
+            let center = CGPoint(x: rect.midX, y: rect.midY)
+            let radius = (size - lineWidth) / 2
+
+            // Background track
+            let trackPath = NSBezierPath()
+            trackPath.appendArc(withCenter: center, radius: radius, startAngle: 0, endAngle: 360)
+            trackPath.lineWidth = lineWidth
+            NSColor.tertiaryLabelColor.setStroke()
+            trackPath.stroke()
+
+            // Progress arc (clockwise from 12 o'clock)
+            if progress > 0 {
+                let startAngle: CGFloat = 90 // 12 o'clock
+                let endAngle: CGFloat = startAngle - CGFloat(progress) * 360
+
+                let arcPath = NSBezierPath()
+                arcPath.appendArc(withCenter: center, radius: radius, startAngle: startAngle, endAngle: endAngle, clockwise: true)
+                arcPath.lineWidth = lineWidth
+                arcPath.lineCapStyle = .round
+
+                let drawColor = paused ? color.withAlphaComponent(0.5) : color
+                drawColor.setStroke()
+                arcPath.stroke()
+            }
+
+            return true
+        }
+        image.isTemplate = false
+        return image
     }
     
     @objc private func togglePopover() {

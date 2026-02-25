@@ -36,9 +36,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
         telosManager.refresh()
         
         // Update icon when timer changes
-        Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
+        let iconTimer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { _ in
             self.menuBarManager?.updateIcon()
         }
+        RunLoop.current.add(iconTimer, forMode: .common)
     }
     
     private func setupNotificationCategories() {

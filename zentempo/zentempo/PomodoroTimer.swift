@@ -86,6 +86,8 @@ class PomodoroTimer: ObservableObject {
     @AppStorage("sessionsUntilLongBreak") var sessionsUntilLongBreak: Int = 4
     
     private var timer: Timer?
+    private var endDate: Date?
+    private var pausedTimeRemaining: Int?
     private var workSessionsCount: Int = 0
     private var quotes: MotivationalQuotes?
     
@@ -100,30 +102,39 @@ class PomodoroTimer: ObservableObject {
             currentState = .work
             timeRemaining = workDuration
         }
-        
+
         isRunning = true
         isPaused = false
+        endDate = Date().addingTimeInterval(TimeInterval(timeRemaining))
+        pausedTimeRemaining = nil
         startTimer()
     }
-    
+
     func pause() {
         isRunning = false
         isPaused = true
+        pausedTimeRemaining = timeRemaining
+        endDate = nil
         timer?.invalidate()
         timer = nil
     }
-    
+
     func resume() {
         if isPaused {
             isRunning = true
             isPaused = false
+            let remaining = pausedTimeRemaining ?? timeRemaining
+            endDate = Date().addingTimeInterval(TimeInterval(remaining))
+            pausedTimeRemaining = nil
             startTimer()
         }
     }
-    
+
     func reset() {
         timer?.invalidate()
         timer = nil
+        endDate = nil
+        pausedTimeRemaining = nil
         currentState = .idle
         timeRemaining = 0
         isRunning = false
@@ -136,15 +147,23 @@ class PomodoroTimer: ObservableObject {
     
     private func startTimer() {
         timer?.invalidate()
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+        let newTimer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { _ in
             self.tick()
         }
+        // Fire during UI interactions (menu tracking, popover) too
+        RunLoop.current.add(newTimer, forMode: .common)
+        timer = newTimer
     }
-    
+
     private func tick() {
-        if timeRemaining > 0 {
-            timeRemaining -= 1
+        guard let endDate = endDate else { return }
+        let remaining = Int(ceil(endDate.timeIntervalSinceNow))
+        if remaining > 0 {
+            if timeRemaining != remaining {
+                timeRemaining = remaining
+            }
         } else {
+            timeRemaining = 0
             completeCurrentSession()
         }
     }
@@ -152,6 +171,8 @@ class PomodoroTimer: ObservableObject {
     private func completeCurrentSession() {
         timer?.invalidate()
         timer = nil
+        endDate = nil
+        pausedTimeRemaining = nil
         
         // Send notification
         sendNotification()
@@ -197,6 +218,7 @@ class PomodoroTimer: ObservableObject {
         // Auto-start if enabled
         if autoStartNextSession {
             isRunning = true
+            endDate = Date().addingTimeInterval(TimeInterval(timeRemaining))
             startTimer()
         } else {
             isRunning = false
