@@ -185,6 +185,7 @@ class PomodoroTimer: ObservableObject {
             sessionsCompletedToday += 1
             lifetimePomodoroCount += 1
             saveTodaysSessions()
+            saveSessionLog()
             workSessionsCount += 1
         }
         
@@ -371,6 +372,37 @@ class PomodoroTimer: ObservableObject {
         return SystemSound.allCases
     }
 
+    // MARK: - Session Log
+
+    struct SessionLogEntry: Codable {
+        let date: String
+        let task: String
+        let durationMinutes: Int
+    }
+
+    private func saveSessionLog() {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+        let entry = SessionLogEntry(
+            date: formatter.string(from: Date()),
+            task: currentTaskLabel.isEmpty ? "" : currentTaskLabel,
+            durationMinutes: workDuration / 60
+        )
+        var logs = loadSessionLogs()
+        logs.append(entry)
+        if let data = try? JSONEncoder().encode(logs) {
+            UserDefaults.standard.set(data, forKey: "sessionLogs")
+        }
+    }
+
+    private func loadSessionLogs() -> [SessionLogEntry] {
+        guard let data = UserDefaults.standard.data(forKey: "sessionLogs"),
+              let logs = try? JSONDecoder().decode([SessionLogEntry].self, from: data) else {
+            return []
+        }
+        return logs
+    }
+
     // MARK: - Data Export
 
     struct SessionData: Codable {
@@ -382,6 +414,7 @@ class PomodoroTimer: ObservableObject {
         let exportDate: String
         let lifetimeSessions: Int
         let dailySessions: [SessionData]
+        let sessionLog: [SessionLogEntry]
     }
 
     func getAllSessionData() -> [SessionData] {
@@ -408,7 +441,8 @@ class PomodoroTimer: ObservableObject {
         let exportData = ExportData(
             exportDate: formatter.string(from: Date()),
             lifetimeSessions: lifetimePomodoroCount,
-            dailySessions: getAllSessionData()
+            dailySessions: getAllSessionData(),
+            sessionLog: loadSessionLogs()
         )
 
         let encoder = JSONEncoder()
@@ -417,9 +451,10 @@ class PomodoroTimer: ObservableObject {
     }
 
     func exportToCSV() -> String {
-        var csv = "date,sessions\n"
-        for session in getAllSessionData() {
-            csv += "\(session.date),\(session.sessions)\n"
+        var csv = "date,task,duration_minutes\n"
+        for entry in loadSessionLogs() {
+            let escapedTask = entry.task.contains(",") ? "\"\(entry.task)\"" : entry.task
+            csv += "\(entry.date),\(escapedTask),\(entry.durationMinutes)\n"
         }
         return csv
     }
