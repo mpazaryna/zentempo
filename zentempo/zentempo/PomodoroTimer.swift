@@ -71,6 +71,7 @@ class PomodoroTimer: ObservableObject {
     @Published var timeRemaining: Int = 0
     @Published var isRunning: Bool = false
     @Published var isPaused: Bool = false
+    @Published var currentTaskLabel: String = ""
     @Published var sessionsCompleted: Int = 0
     @Published var sessionsCompletedToday: Int = 0
     @Published var sessionsCompletedThisWeek: Int = 0
@@ -139,6 +140,7 @@ class PomodoroTimer: ObservableObject {
         timeRemaining = 0
         isRunning = false
         isPaused = false
+        currentTaskLabel = ""
     }
     
     func skip() {
