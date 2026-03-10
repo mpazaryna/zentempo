@@ -18,28 +18,21 @@ struct MenuBarView: View {
                 .font(.title2)
                 .fontWeight(.semibold)
             
-            // Task Label Input (when idle)
-            if timer.currentState == .idle {
-                TextField("What are you working on?", text: $timer.currentTaskLabel)
-                    .textFieldStyle(.roundedBorder)
-                    .font(.subheadline)
-                    .onSubmit {
+            // Task Label Input
+            TextField("What are you working on?", text: $timer.currentTaskLabel)
+                .textFieldStyle(.roundedBorder)
+                .font(.subheadline)
+                .onSubmit {
+                    if timer.currentState == .idle {
                         timer.start()
                     }
-            }
+                }
 
             // Timer Display
             VStack(spacing: 8) {
                 Text(timer.sessionDescription())
                     .font(.headline)
                     .foregroundColor(sessionColor())
-
-                if !timer.currentTaskLabel.isEmpty && timer.currentState != .idle {
-                    Text(timer.currentTaskLabel)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
-                }
 
                 Text(timer.formattedTime())
                     .font(.system(size: 48, weight: .light, design: .monospaced))
