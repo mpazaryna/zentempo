@@ -91,6 +91,7 @@ class PomodoroTimer: ObservableObject {
     private var pausedTimeRemaining: Int?
     private var workSessionsCount: Int = 0
     private var quotes: MotivationalQuotes?
+    private var persistentReminderTimer: Timer?
     
     init() {
         loadTodaysSessions()
@@ -99,6 +100,7 @@ class PomodoroTimer: ObservableObject {
     }
     
     func start() {
+        stopPersistentReminder()
         if currentState == .idle {
             currentState = .work
             timeRemaining = workDuration
@@ -136,6 +138,7 @@ class PomodoroTimer: ObservableObject {
         timer = nil
         endDate = nil
         pausedTimeRemaining = nil
+        stopPersistentReminder()
         currentState = .idle
         timeRemaining = 0
         isRunning = false
@@ -226,9 +229,59 @@ class PomodoroTimer: ObservableObject {
         } else {
             isRunning = false
             isPaused = false
+            // Re-fire notification periodically until user acts
+            if persistentNotifications {
+                startPersistentReminder()
+            }
         }
     }
     
+    private func startPersistentReminder() {
+        persistentReminderTimer?.invalidate()
+        let reminderTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+            self?.sendPersistentReminder()
+        }
+        RunLoop.current.add(reminderTimer, forMode: .common)
+        persistentReminderTimer = reminderTimer
+    }
+
+    func stopPersistentReminder() {
+        persistentReminderTimer?.invalidate()
+        persistentReminderTimer = nil
+        UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: ["zentempo-persistent-reminder"])
+    }
+
+    private func sendPersistentReminder() {
+        let content = UNMutableNotificationContent()
+
+        switch currentState {
+        case .work:
+            content.title = "Ready to focus? ⚡"
+            content.body = "Your break ended. Start your next work session!"
+        case .shortBreak, .longBreak:
+            content.title = "Time for a break! 🎉"
+            content.body = "Work session complete. Take your well-earned break!"
+        case .idle:
+            stopPersistentReminder()
+            return
+        }
+
+        if let selectedSound = SystemSound(rawValue: notificationSound) {
+            content.sound = selectedSound.notificationSound
+        } else {
+            content.sound = .default
+        }
+
+        content.categoryIdentifier = "TIMER_COMPLETE"
+        content.interruptionLevel = .timeSensitive
+        content.relevanceScore = 1.0
+        content.threadIdentifier = "zentempo-timer"
+
+        // Use a fixed identifier so it replaces the previous reminder
+        let request = UNNotificationRequest(identifier: "zentempo-persistent-reminder", content: content, trigger: nil)
+        UNUserNotificationCenter.current().add(request)
+    }
+
     private func sendNotification() {
         let content = UNMutableNotificationContent()
         
@@ -265,7 +318,7 @@ class PomodoroTimer: ObservableObject {
         } else {
             content.sound = .default
         }
-        
+
         // Configure notification for persistence
         content.categoryIdentifier = "TIMER_COMPLETE"
         content.interruptionLevel = .timeSensitive

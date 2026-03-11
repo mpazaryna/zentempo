@@ -88,8 +88,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
             // Schedule a reminder in 5 minutes
             scheduleSnoozeNotification()
         case "DISMISS", UNNotificationDismissActionIdentifier:
-            // User dismissed the notification
-            break
+            // User dismissed the notification — stop repeating reminders
+            timer.stopPersistentReminder()
         default:
             // User tapped on the notification itself
             menuBarManager?.showPopover()
